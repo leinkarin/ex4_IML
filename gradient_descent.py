@@ -121,38 +121,39 @@ class GradientDescent:
 
         """
         t=0
-        w = np.copy(f.weights)
+        w_t = np.copy(f.weights)
         delta=self.tol_
 
         best_val=np.inf
         best_w=None
 
-        w_sum=np.zeros_like(w)
+        w_sum=np.zeros_like(f.weights)
 
-        while t<self.max_iter_ and delta>self.tol_:
+        while t<self.max_iter_ and delta>=self.tol_:
 
-            val=f.compute_output(X, y)
-            grad=f.compute_jacobian(X, y)
-            eta=self.learning_rate_.lr_step(t) #todo: insure the arguments
-            w_t=w-eta*grad
-            delta=np.linalg.norm(w-w_t)
+            val=f.compute_output(X=X, y=y)
+            grad=f.compute_jacobian(X=X, y=y)
+            eta=self.learning_rate_.lr_step(f=f, x=X, dx=-grad, t=t)
+            f.weights=f.weights-eta*grad
+            delta=np.linalg.norm(f.weights-w_t)
 
             if self.out_type_=="best":
                 if val<best_val:
                     best_val=val
-                    best_w=w_t
+                    best_w=f.weights
 
             elif self.out_type_=="average":
-                w_sum+=w_t
+                w_sum+=f.weights
 
-            w=w_t
+            w_t = np.copy(f.weights)
             t += 1
-            self.callback_(solver=self, weights=w, val=val,grad=grad, t=t, eta=eta, delta=delta)
+            self.callback_(solver=self, weight=np.copy(f.weights), val=val, grad=grad, t=t, eta=eta, delta=delta)
 
         if self.out_type_=="last":
-            return w
+            return w_t
         elif self.out_type_=="best":
             return best_w
         else:
             return w_sum/t
+
 
