@@ -79,12 +79,35 @@ def get_gd_state_recorder_callback() -> Tuple[Callable[[], None], List[np.ndarra
     weights: List[np.ndarray]
         Recorded parameters
     """
-    raise NotImplementedError()
+    values=[]
+    weights=[]
+
+    def callback(val, weight, **kwargs):
+        values.append(val)
+        weights.append(weight)
+
+    return callback, values, weights
 
 
 def compare_fixed_learning_rates(init: np.ndarray = np.array([np.sqrt(2), np.e / 3]),
                                  etas: Tuple[float] = (1, .1, .01, .001)):
-    raise NotImplementedError()
+    modules=[L1, L2]
+    for module in modules:
+        results={}
+        for eta in etas:
+            callback, values, weights= get_gd_state_recorder_callback()
+
+            model= GradientDescent(learning_rate=FixedLR(eta), callback=callback)
+
+            model.fit(module(weights=init), None,None) # ignore X and y
+            results[eta]= (values, weights)
+
+            plot_descent_path(module, np.array([init] + weights), title=f"eta={eta}, module={module.__name__}").show()
+
+
+
+
+
 
 
 
@@ -136,4 +159,4 @@ def fit_logistic_regression():
 if __name__ == '__main__':
     np.random.seed(0)
     compare_fixed_learning_rates()
-    fit_logistic_regression()
+    # fit_logistic_regression()

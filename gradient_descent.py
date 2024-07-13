@@ -120,4 +120,39 @@ class GradientDescent:
                 Euclidean norm of w^(t)-w^(t-1)
 
         """
-        raise NotImplementedError()
+        t=0
+        w = np.copy(f.weights)
+        delta=self.tol_
+
+        best_val=np.inf
+        best_w=None
+
+        w_sum=np.zeros_like(w)
+
+        while t<self.max_iter_ and delta>self.tol_:
+
+            val=f.compute_output(X, y)
+            grad=f.compute_jacobian(X, y)
+            eta=self.learning_rate_.lr_step(t) #todo: insure the arguments
+            w_t=w-eta*grad
+            delta=np.linalg.norm(w-w_t)
+
+            if self.out_type_=="best":
+                if val<best_val:
+                    best_val=val
+                    best_w=w_t
+
+            elif self.out_type_=="average":
+                w_sum+=w_t
+
+            w=w_t
+            t += 1
+            self.callback_(solver=self, weights=w, val=val,grad=grad, t=t, eta=eta, delta=delta)
+
+        if self.out_type_=="last":
+            return w
+        elif self.out_type_=="best":
+            return best_w
+        else:
+            return w_sum/t
+
