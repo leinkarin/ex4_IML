@@ -96,14 +96,16 @@ def compare_fixed_learning_rates(init: np.ndarray = np.array([np.sqrt(2), np.e /
     modules=[L1, L2]
     for module in modules:
         results={}
-        best_val=0
+        min_loss = np.inf
         for eta in etas:
             callback, values, weights= get_gd_state_recorder_callback()
 
-            model= GradientDescent(learning_rate=FixedLR(eta), callback=callback, out_type="best")
+            model= GradientDescent(learning_rate=FixedLR(eta), callback=callback)
 
-            best_w, best_val=model.fit(module(weights=init), None,None) # ignore X and y
+            model.fit(module(weights=init), None,None) # ignore X and y
             results[eta]= (values, weights)
+            if min(values)<min_loss:
+                min_loss=min(values)
 
             plot_descent_path(module, np.array([init] + weights), title=f"eta={eta}, module={module.__name__}").show()
 
@@ -119,7 +121,7 @@ def compare_fixed_learning_rates(init: np.ndarray = np.array([np.sqrt(2), np.e /
         )
         fig.show()
 
-        print(f"The lowest loss achieved when minimizing {module.__name__} is {best_val}")
+        print(f"The lowest loss achieved when minimizing {module.__name__} is {min_loss}")
 
 
 
@@ -214,5 +216,5 @@ def fit_logistic_regression():
 
 if __name__ == '__main__':
     np.random.seed(0)
-    # compare_fixed_learning_rates()
-    fit_logistic_regression()
+    compare_fixed_learning_rates()
+    #fit_logistic_regression()
