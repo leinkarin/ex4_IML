@@ -133,7 +133,13 @@ class LogisticModule(BaseModule):
         output: ndarray of shape (1,)
             Value of function at point self.weights
         """
-        raise NotImplementedError()
+        m = X.shape[0]
+        wx = X @ self.weights
+        log_likelihood = y * wx - np.log(1 + np.exp(wx)) # y_i * <x_i, w> - log(1+exp(<x_i, w>))
+        return -1/m * (np.sum(log_likelihood))
+
+
+
 
     def compute_jacobian(self, X: np.ndarray, y: np.ndarray, **kwargs) -> np.ndarray:
         """
@@ -152,8 +158,13 @@ class LogisticModule(BaseModule):
         output: ndarray of shape (n_features,)
             Derivative of function with respect to self.weights at point self.weights
         """
-        raise NotImplementedError()
+        m = X.shape[0]
+        wx = X @ self.weights
+        sigmoid = np.exp(wx) / (1 + np.exp(wx))
+        gradient = X.T @ (y-sigmoid) / m
+        return -gradient
 
+        # return - np.sum((y - (np.exp(X @ self.weights) / (1 + np.exp(X @ self.weights))))[:, None] * X, axis=0) / X.shape[0]
 
 class RegularizedModule(BaseModule):
     """
@@ -209,7 +220,10 @@ class RegularizedModule(BaseModule):
         output: ndarray of shape (1,)
             Value of function at point self.weights
         """
-        raise NotImplementedError()
+        F= self.fidelity_module_.compute_output(**kwargs)
+        R= self.regularization_module_.compute_output(**kwargs)
+
+        return F+ self.lam_ * R
 
     def compute_jacobian(self, **kwargs) -> np.ndarray:
         """
@@ -225,7 +239,11 @@ class RegularizedModule(BaseModule):
         output: ndarray of shape (n_in,)
             Derivative with respect to self.weights at point self.weights
         """
-        raise NotImplementedError()
+
+        F_grad = self.fidelity_module_.compute_jacobian(**kwargs)
+        R_grad = self.regularization_module_.compute_jacobian(**kwargs)
+
+        return F_grad + self.lam_ * R_grad
 
     @property
     def weights(self):
@@ -236,7 +254,7 @@ class RegularizedModule(BaseModule):
         -------
         weights: ndarray of shape (n_in, n_out)
         """
-        raise NotImplementedError()
+        return self.fidelity_module_.weights
 
     @weights.setter
     def weights(self, weights: np.ndarray) -> None:
@@ -251,4 +269,16 @@ class RegularizedModule(BaseModule):
         weights: ndarray of shape (n_in, n_out)
             Weights to set for module
         """
-        raise NotImplementedError()
+        # Determine if an intercept is included in the model
+        include_intercept = int(self.include_intercept_)
+
+        self.fidelity_module_.weights = weights
+
+        # Set the weights for the regularization module
+        # If an intercept is included, do not regularize it by prepending a zero
+        # If no intercept, use the weights as they are
+        self.regularization_module_.weights = np.concatenate(
+            [np.zeros(include_intercept), weights[include_intercept:]]
+        )
+
+

@@ -2,17 +2,19 @@ import numpy as np
 import pandas as pd
 from typing import Tuple, List, Callable, Type
 
+from sklearn.metrics import roc_curve, auc
+
 from base_module import BaseModule
 from base_learning_rate import  BaseLR
 from gradient_descent import GradientDescent
 from learning_rate import FixedLR
-
-
+from loss_functions import misclassification_error
 
 # from IMLearn.desent_methods import GradientDescent, FixedLR, ExponentialLR
 from modules import L1, L2
 from logistic_regression import LogisticRegression
 from utils import split_train_test
+from cross_validate import cross_validate
 
 import plotly.graph_objects as go
 
@@ -94,16 +96,30 @@ def compare_fixed_learning_rates(init: np.ndarray = np.array([np.sqrt(2), np.e /
     modules=[L1, L2]
     for module in modules:
         results={}
+        best_val=0
         for eta in etas:
             callback, values, weights= get_gd_state_recorder_callback()
 
-            model= GradientDescent(learning_rate=FixedLR(eta), callback=callback)
+            model= GradientDescent(learning_rate=FixedLR(eta), callback=callback, out_type="best")
 
-            model.fit(module(weights=init), None,None) # ignore X and y
+            best_w, best_val=model.fit(module(weights=init), None,None) # ignore X and y
             results[eta]= (values, weights)
 
             plot_descent_path(module, np.array([init] + weights), title=f"eta={eta}, module={module.__name__}").show()
 
+        fig = go.Figure()
+        for eta, (values, weights) in results.items():
+            norms = [np.linalg.norm(w) for w in weights]
+            fig.add_trace(go.Scatter(x=list(range(len(norms))), y=norms, mode='lines', name=f'eta={eta}'))
+
+        fig.update_layout(
+            title=f'Convergence rate for {module.__name__}',
+            xaxis_title='GD Iteration',
+            yaxis_title='Norm of weights'
+        )
+        fig.show()
+
+        print(f"The lowest loss achieved when minimizing {module.__name__} is {best_val}")
 
 
 
@@ -149,14 +165,54 @@ def fit_logistic_regression():
     X_train, y_train, X_test, y_test = load_data()
 
     # Plotting convergence rate of logistic regression over SA heart disease data
-    raise NotImplementedError()
+    callback, values, weights = get_gd_state_recorder_callback()
+    gd= GradientDescent(callback=callback)
+    model= LogisticRegression(solver=gd)
+    model.fit(X_train.values, y_train.values)
+    y_pred= model.predict_proba(X_train.values)
+
+
+    fpr, tpr, thresholds = roc_curve(y_train, y_pred)
+    roc_auc = auc(fpr, tpr)
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(x=fpr, y=tpr, mode='lines', name=f'ROC curve(area = {roc_auc:.3f})',
+                             line=dict(color='darkorange', width=2)))
+    fig.add_trace(go.Scatter(x=[0, 1], y=[0, 1], mode='lines', name='Random chance',
+                             line=dict(color='navy', width=2, dash='dash')))
+
+    fig.update_layout(title='Receiver Operating Characteristic',
+                      xaxis_title='False Positive Rate',
+                      yaxis_title='True Positive Rate',
+                      showlegend=True)
+    fig.show()
+
+    criterion= tpr-fpr
+    optimal_index = np.argmax(criterion)
+    model.alpha_ = thresholds[optimal_index]
+    print(f"Optimal threshold is {model.alpha_} with a test error of {model.loss(X_test.values, y_test.values)}")
 
     # Fitting l1- and l2-regularized logistic regression models, using cross-validation to specify values
     # of regularization parameter
-    raise NotImplementedError()
+    lambdas= [0.001,0.002,0.005,0.01,0.02,0.05,0.1]
+    best_lambda = None
+    best_score = -np.inf
+
+    for lam in lambdas:
+        gd= GradientDescent(learning_rate=FixedLR(1e-4), max_iter=20000)
+        logistic_l1= LogisticRegression(solver=gd, penalty="l1", alpha=0.5, lam=lam)
+        train_score, val_score =cross_validate(logistic_l1, X_train.values, y_train.values,
+                                               scoring=misclassification_error)
+
+        if val_score > best_score:
+            best_score = val_score
+            best_lambda = lam
+
+    print(f"Best lambda: {best_lambda}, with score: {best_score}")
+
+
 
 
 if __name__ == '__main__':
     np.random.seed(0)
-    compare_fixed_learning_rates()
-    # fit_logistic_regression()
+    # compare_fixed_learning_rates()
+    fit_logistic_regression()

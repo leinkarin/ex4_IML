@@ -152,7 +152,7 @@ class GradientDescent:
         if self.out_type_=="last":
             return w_t
         elif self.out_type_=="best":
-            return best_w
+            return best_w, best_val
         else:
             return w_sum/t
 
