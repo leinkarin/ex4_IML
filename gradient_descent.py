@@ -139,7 +139,7 @@ class GradientDescent:
 
             if self.out_type_=="best":
                 if val<best_val:
-                    best_val=val
+                    # best_val=val
                     best_w=f.weights
 
             elif self.out_type_=="average":

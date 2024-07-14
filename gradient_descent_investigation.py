@@ -97,6 +97,7 @@ def compare_fixed_learning_rates(init: np.ndarray = np.array([np.sqrt(2), np.e /
     for module in modules:
         results={}
         min_loss = np.inf
+
         for eta in etas:
             callback, values, weights= get_gd_state_recorder_callback()
 
@@ -121,7 +122,7 @@ def compare_fixed_learning_rates(init: np.ndarray = np.array([np.sqrt(2), np.e /
         )
         fig.show()
 
-        print(f"The lowest loss achieved when minimizing {module.__name__} is {min_loss}")
+        print(f"The lowest loss achieved when minimizing {module.__name__} is {min_loss} ")
 
 
 
