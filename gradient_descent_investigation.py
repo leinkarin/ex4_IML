@@ -164,7 +164,7 @@ def load_data(path: str = "SAheart.data", train_portion: float = .8) -> \
 
 
 def fit_logistic_regression():
-    # Load and split SA Heard Disease dataset
+    # Load and split SA Heart Disease dataset
     X_train, y_train, X_test, y_test = load_data()
 
     # Plotting convergence rate of logistic regression over SA heart disease data
