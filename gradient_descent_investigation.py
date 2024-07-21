@@ -194,28 +194,26 @@ def fit_logistic_regression():
     model.alpha_ = thresholds[optimal_index]
     print(f"Optimal threshold is {model.alpha_} with a test error of {model.loss(X_test.values, y_test.values)}")
 
-    # Fitting l1- and l2-regularized logistic regression models, using cross-validation to specify values
-    # of regularization parameter
-    lambdas= [0.001,0.002,0.005,0.01,0.02,0.05,0.1]
-    best_lambda = None
-    best_score = -np.inf
+    # Fitting regularized logistic regression, while choosing lambda using cross-validaiton
+    lambdas = [0.001, 0.002, 0.005, 0.01, 0.02, 0.05, 0.1]
+    scores = {}
+    for i, lam in enumerate(lambdas):
 
-    for lam in lambdas:
-        gd= GradientDescent(learning_rate=FixedLR(1e-4), max_iter=20000)
-        logistic_l1= LogisticRegression(solver=gd, penalty="l1", alpha=0.5, lam=lam)
-        train_score, val_score =cross_validate(logistic_l1, X_train.values, y_train.values,
-                                               scoring=misclassification_error)
-
-        if val_score > best_score:
-            best_score = val_score
-            best_lambda = lam
-
-    print(f"Best lambda: {best_lambda}, with score: {best_score}")
+        gd = GradientDescent(learning_rate=FixedLR(1e-4), max_iter=20000)
+        logistic = LogisticRegression(solver=gd, penalty="l1", lam=lam, alpha=.5)
+        scores[lam]=(cross_validate(estimator=logistic, X=X_train.values, y=y_train.values,
+                                   scoring=misclassification_error))
 
 
+    best_lam = min(scores, key=lambda lam: scores[lam][1])
+    gd = GradientDescent(learning_rate=FixedLR(1e-4), max_iter=20000)
+    model = LogisticRegression(solver=gd, penalty="l1", lam=best_lam, alpha=.5) \
+        .fit(X_train.values, y_train.values)
+
+    print(f"Best lambda: {best_lam}, with score: {round(model.loss(X_test.values, y_test.values), 2)}")
 
 
 if __name__ == '__main__':
     np.random.seed(0)
     compare_fixed_learning_rates()
-    #fit_logistic_regression()
+    fit_logistic_regression()
